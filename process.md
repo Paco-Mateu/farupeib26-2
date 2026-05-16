@@ -73,44 +73,65 @@ Guardrails already in this repo:
 - local git hooks in `.githooks/`
 - GitHub Actions workflow in `.github/workflows/guardrails.yml`
 
+## Frontend Stack
+
+Installed and configured before the contest:
+
+- **Next.js 14** (App Router, Server Components)
+- **shadcn/ui v4** — component library, `base-nova` style, neutral palette
+- **Tailwind CSS v4** — `@import "tailwindcss"` syntax, `@tailwindcss/postcss`
+- **Framer Motion** — animations; used for bottom-nav spring indicator
+- **Geist Sans** — from `geist` npm package (not `next/font/google`)
+- **Lucide React** — icons bundled with shadcn
+
+Portal layouts already wired:
+
+| Route | Layout | Key file |
+| --- | --- | --- |
+| `/` | Landing + QR + provider status | `app/page.tsx` (Server Component) |
+| `/pro` | Fixed 260px sidebar + scrollable main | `app/pro/layout.tsx` |
+| `/app` | `100dvh` shell + top header + Framer Motion bottom nav | `app/app/layout.tsx` |
+
+The landing page reads env vars directly as a Server Component — no `NEXT_PUBLIC_` prefix needed for any landing variable. Only the `ProviderStatus` client component exists on the client side (fetches `/api/health`).
+
 ## Environment Variables
 
-The main variables we care about are:
+Minimal set — `APP_NAME` is the single source of truth for display name and database name:
 
 ```bash
-PROJECT_SLOT=2
+APP_NAME=proto2
 PROJECT_NAME="FarupeIB 26 Prototype 2"
 BACKEND_PORT=8002
 FRONTEND_PORT=3002
 
-MONGODB_URI="<mongodb-uri>"
+MONGODB_URI="mongodb+srv://..."
 DATABASE_NAME=proto2
 
-OPENAI_API_KEY="<openai-api-key>"
-OPENAI_CHAT_MODEL="gpt-5.4-mini"
+OPENAI_API_KEY="sk-..."
+OPENAI_CHAT_MODEL="gpt-4.1-mini"
 OPENAI_EMBEDDING_MODEL="text-embedding-3-small"
-VOYAGE_API_KEY="<voyage-api-key>"
+VOYAGE_API_KEY="..."
 VOYAGE_EMBEDDING_MODEL="voyage-4-lite"
 VOYAGE_RERANK_MODEL="rerank-2.5-lite"
 
 PUBLIC_DEMO_URL=https://farupeib26-2.vercel.app
 PUBLIC_DEMO_URL_PORTAL=https://farupeib26-2.vercel.app/pro
 PUBLIC_DEMO_URL_APP=https://farupeib26-2.vercel.app/app
-NEXT_PUBLIC_DEMO_URL=https://farupeib26-2.vercel.app
-NEXT_PUBLIC_DEMO_URL_PORTAL=https://farupeib26-2.vercel.app/pro
-NEXT_PUBLIC_DEMO_URL_APP=https://farupeib26-2.vercel.app/app
-NEXT_PUBLIC_PROJECT_NAME="FarupeIB 26 Prototype 2"
-NEXT_PUBLIC_WAITLIST_HEADLINE="We are building this prototype live today."
-NEXT_PUBLIC_WAITLIST_MESSAGE="Scan the code now, come back in two hours, and this page should feel completely different."
+WAITLIST_HEADLINE="We are building this prototype live today."
 ```
+
+Variables you do NOT need (removed as redundant):
+
+- `PROJECT_SLOT` — only a port fallback; with explicit `BACKEND_PORT` and `FRONTEND_PORT` set, it is unused
+- `NEXT_PUBLIC_DEMO_URL` / `NEXT_PUBLIC_DEMO_URL_PORTAL` / `NEXT_PUBLIC_DEMO_URL_APP` — landing page is a Server Component, reads non-prefixed vars directly
+- `NEXT_PUBLIC_PROJECT_NAME` / `NEXT_PUBLIC_WAITLIST_HEADLINE` / `NEXT_PUBLIC_WAITLIST_MESSAGE` — same reason
 
 Rules for env management:
 
 - local development uses `.env.local`
 - tracked placeholders live in `.env.example`
 - production and preview values live in Vercel project settings
-- public variables must start with `NEXT_PUBLIC_`
-- bare hostnames like `farupeib26-2.vercel.app` are normalized to `https://...` at runtime
+- bare hostnames like `farupeib26-2.vercel.app` are normalized to `https://...` at runtime by the backend settings layer
 
 ## One-Time Setup Per Repo
 
@@ -274,9 +295,31 @@ Before the final demo:
 3. Verify `GET /api/health` and `GET /api/health/openai`.
 4. Confirm the QR code still points to the intended URL.
 
+## Scaffolding Status (2026-05-16)
+
+All three repos are fully scaffolded, aligned, and ready to build on.
+
+**What is ready:**
+
+- Landing page with QR code, live provider status (MongoDB / OpenAI / Voyage), and portal links
+- `/pro` desktop portal — blank canvas with fixed sidebar and scrollable main area
+- `/app` mobile portal — blank canvas with fixed `100dvh` shell, top header, Framer Motion bottom nav, safe-area insets
+- FastAPI backend with working routes: `/api/health`, `/api/health/openai`, `/api/health/voyage`, `/api/ai/chat`, `/api/ai/embed`, `/api/ai/rerank`
+- MongoDB connection singleton ready (just needs `MONGODB_URI` in `.env.local`)
+- All `/api/*` traffic proxied from Next.js to FastAPI in dev and on Vercel
+- Env config simplified: `APP_NAME` drives database name and display name; `NEXT_PUBLIC_*` duplicates removed
+- Reserved stubs: `backend/auth/`, `backend/multitenancy/`
+
+**What to add during the sprint:**
+
+1. A short problem brief in `docs/briefs/`
+2. MongoDB write/query routes in `backend/routes/` once the data model is known
+3. Portal page content in `app/pro/page.tsx` and `app/app/page.tsx`
+4. Nav sections in `components/pro/sidebar.tsx` and `components/app/bottom-nav.tsx`
+
 ## Current Assumptions
 
 - MongoDB is the shared persistence layer.
 - OpenAI is the primary AI runtime.
-- `gpt-5.4-mini` is the default chat/completions model unless we choose a stronger model for a specific prototype.
+- `gpt-4.1-mini` is the default chat/completions model unless we choose a stronger model for a specific prototype.
 - `text-embedding-3-small` is the default embeddings model unless the prototype needs higher recall or multilingual quality.

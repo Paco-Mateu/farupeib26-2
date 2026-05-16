@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import shutil
 import subprocess
 import sys
@@ -59,14 +58,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Also sync empty-string values. By default empty values are skipped for safety.",
     )
-    parser.add_argument(
-        "--preview-git-branch",
-        default=os.environ.get("VERCEL_PREVIEW_GIT_BRANCH"),
-        help=(
-            "Git branch target for Preview environment syncs. "
-            "Can also be provided through VERCEL_PREVIEW_GIT_BRANCH."
-        ),
-    )
     parser.add_argument("--dry-run", action="store_true", help="Print what would be synced without calling Vercel.")
     return parser.parse_args()
 
@@ -120,30 +111,18 @@ def read_env_file(env_file: Path) -> dict[str, str | None]:
     return parsed
 
 
-def sync_value(
-    root: Path,
-    cli: list[str],
-    name: str,
-    value: str,
-    environment: str,
-    dry_run: bool,
-    preview_git_branch: str | None,
-) -> None:
+def sync_value(root: Path, cli: list[str], name: str, value: str, environment: str, dry_run: bool) -> None:
     command = [*cli, "env", "add", name, environment]
     if environment == "preview":
-        # Vercel CLI 54.x may still prompt for branch selection unless the
-        # optional preview-branch slot is explicitly present. Empty means "all
-        # preview branches"; a non-empty value scopes the variable to one branch.
-        command.append(preview_git_branch or "")
+        # Passing an empty git-branch argument applies the value to all Preview branches
+        # without triggering an interactive prompt.
+        command.append("")
     command.extend(["--force", "--yes", "--value", value])
-    if environment in {"preview", "production"} and is_sensitive(name):
+    if is_sensitive(name) and environment != "development":
         command.append("--sensitive")
 
     if dry_run:
-        preview_command = command.copy()
-        value_index = preview_command.index("--value") + 1
-        preview_command[value_index] = "<redacted>"
-        print(f"[dry-run] {' '.join(preview_command)}")
+        print(f"[dry-run] {' '.join(command)}")
         return
 
     subprocess.run(command, cwd=root, check=True)
@@ -184,7 +163,7 @@ def main() -> int:
     for environment in environments:
         print(f"\nEnvironment: {environment}")
         for name, value in values.items():
-            sync_value(root, cli, name, value, environment, args.dry_run, args.preview_git_branch)
+            sync_value(root, cli, name, value, environment, args.dry_run)
             print(f"  synced {name}")
 
     return 0

@@ -33,21 +33,21 @@ export function BottomNav() {
             {active && (
               <motion.div
                 layoutId="bottom-tab-indicator"
-                className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-foreground"
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-teal"
                 transition={{ type: 'spring', stiffness: 500, damping: 40 }}
               />
             )}
             <Icon
               className={cn(
                 'w-5 h-5 transition-colors duration-150',
-                active ? 'text-foreground' : 'text-muted-foreground',
+                active ? 'text-teal' : 'text-muted-foreground',
               )}
               strokeWidth={active ? 2.5 : 1.5}
             />
             <span
               className={cn(
                 'text-[10px] font-medium transition-colors duration-150 leading-none',
-                active ? 'text-foreground' : 'text-muted-foreground',
+                active ? 'text-teal' : 'text-muted-foreground',
               )}
             >
               {label}

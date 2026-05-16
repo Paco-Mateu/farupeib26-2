@@ -2,10 +2,9 @@ import QRCode from "react-qr-code"
 import { ProviderStatus } from "@/components/landing/provider-status"
 
 export default function Home() {
-  const appName = process.env.APP_NAME ?? "proto2"
   const frontendPort = Number(process.env.FRONTEND_PORT ?? process.env.PORT ?? "3001")
   const demoUrl = process.env.PUBLIC_DEMO_URL ?? `http://localhost:${frontendPort}`
-  const projectName = process.env.PROJECT_NAME ?? appName
+  const projectName = process.env.PROJECT_NAME ?? process.env.APP_NAME ?? "proto2"
   const headline = process.env.WAITLIST_HEADLINE ?? "We are building this prototype live today."
   const portalUrl = process.env.PUBLIC_DEMO_URL_PORTAL ?? `${demoUrl}/pro`
   const appUrl = process.env.PUBLIC_DEMO_URL_APP ?? `${demoUrl}/app`
@@ -14,8 +13,7 @@ export default function Home() {
     <main className="page-shell">
       <section className="hero-panel">
         <div className="hero-copy">
-          <p className="eyebrow">{appName}</p>
-          <h1>{projectName}</h1>
+          <img src="/brand/logo.png" alt={projectName} className="hero-logo" />
           <p className="hero-text hero-headline">{headline}</p>
           <ProviderStatus />
         </div>

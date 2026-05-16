@@ -9,6 +9,7 @@ RUN_REMOTE_BUILD=1
 START_WRAPPER_PID=""
 DEMO_RUNNING=0
 CHECK_FAILURE=0
+REMOTE_DEPLOYMENT_URL=""
 
 wait_for_url() {
   local url="$1"
@@ -21,6 +22,20 @@ wait_for_url() {
   done
   echo "ERROR: timed out waiting for $url" >&2
   return 1
+}
+
+extract_vercel_url() {
+  local log_file="$1"
+  grep -Eo 'https://[^[:space:]]+\.vercel\.app' "$log_file" | tail -n 1
+}
+
+validate_remote_route() {
+  local path="$1"
+  local pattern="$2"
+  if ! bash scripts/vercel-cli.sh curl "${REMOTE_DEPLOYMENT_URL}${path}" | rg -q "$pattern"; then
+    echo "ERROR: remote validation failed for ${REMOTE_DEPLOYMENT_URL}${path}" >&2
+    return 1
+  fi
 }
 
 cleanup() {
@@ -150,7 +165,21 @@ if [ "$REMOTE_MODE" = "--remote-preview" ]; then
     exit 1
   fi
   echo "10. Creating remote preview deployment..."
-  bash scripts/vercel-cli.sh deploy
+  DEPLOY_LOG="$(mktemp)"
+  bash scripts/vercel-cli.sh deploy --yes --no-color 2>&1 | tee "$DEPLOY_LOG"
+  REMOTE_DEPLOYMENT_URL="$(extract_vercel_url "$DEPLOY_LOG")"
+  rm -f "$DEPLOY_LOG"
+
+  if [ -z "$REMOTE_DEPLOYMENT_URL" ]; then
+    echo "ERROR: could not determine remote preview deployment URL." >&2
+    exit 1
+  fi
+
+  echo "11. Verifying remote preview routes..."
+  validate_remote_route "/" "We are building this prototype live today\\." || CHECK_FAILURE=1
+  validate_remote_route "/app" "End-user portal" || CHECK_FAILURE=1
+  validate_remote_route "/pro" "Professional portal" || CHECK_FAILURE=1
+  validate_remote_route "/api/health" "\"service\":\"Prototype Sprint Kit API\"" || CHECK_FAILURE=1
 fi
 
 if [ "$REMOTE_MODE" = "--remote-production" ]; then
@@ -159,7 +188,21 @@ if [ "$REMOTE_MODE" = "--remote-production" ]; then
     exit 1
   fi
   echo "10. Creating remote production deployment..."
-  bash scripts/vercel-cli.sh deploy --prod
+  DEPLOY_LOG="$(mktemp)"
+  bash scripts/vercel-cli.sh deploy --prod --yes --no-color 2>&1 | tee "$DEPLOY_LOG"
+  REMOTE_DEPLOYMENT_URL="$(extract_vercel_url "$DEPLOY_LOG")"
+  rm -f "$DEPLOY_LOG"
+
+  if [ -z "$REMOTE_DEPLOYMENT_URL" ]; then
+    echo "ERROR: could not determine remote production deployment URL." >&2
+    exit 1
+  fi
+
+  echo "11. Verifying remote production routes..."
+  validate_remote_route "/" "We are building this prototype live today\\." || CHECK_FAILURE=1
+  validate_remote_route "/app" "End-user portal" || CHECK_FAILURE=1
+  validate_remote_route "/pro" "Professional portal" || CHECK_FAILURE=1
+  validate_remote_route "/api/health" "\"service\":\"Prototype Sprint Kit API\"" || CHECK_FAILURE=1
 fi
 
 if [ "$CHECK_FAILURE" -ne 0 ]; then
